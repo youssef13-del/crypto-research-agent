@@ -1,0 +1,100 @@
+[build-system]
+requires = ["setuptools>=80"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "crypto-research-agent"
+version = "0.1.0"
+description = "Verified, LLM-assisted cryptocurrency research application"
+readme = "README.md"
+requires-python = ">=3.14,<3.15"
+authors = [{ name = "youssef13-del" }]
+license = "MIT"
+keywords = ["cryptocurrency", "research", "forecasting", "agents"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Environment :: Web Environment",
+    "Intended Audience :: Financial and Insurance Industry",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Office/Business :: Financial",
+    "Typing :: Typed",
+]
+dependencies = [
+    "pydantic>=2,<3",
+    "pydantic-settings>=2,<3",
+    "httpx>=0.28,<1",
+    "langchain-core>=1,<2",
+    "langchain-openai>=1,<2",
+    "ccxt>=4,<5",
+    "pandas>=2,<3",
+    "altair>=6,<7",
+    "numpy>=2,<3",
+    "scikit-learn>=1,<2",
+    "feedparser>=6,<7",
+    "beautifulsoup4>=4,<5",
+    "streamlit>=1.59,<2",
+    "sqlalchemy>=2.0.51,<2.1",
+    "alembic>=1.18.5,<2",
+    "platformdirs>=4,<5",
+    "reportlab>=5,<6",
+    "pymupdf-fonts>=1,<2",
+    "authlib>=1.3.2,<2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=9.0.3,<10",
+    "ruff>=0.15,<1",
+    "mypy>=2,<3",
+    "pandas-stubs>=2,<3",
+    "pypdf>=6,<7",
+    "build>=1,<2",
+]
+
+[project.scripts]
+crypto-research = "crypto_research.interfaces.cli:main"
+chainscope = "crypto_research.interfaces.web.launcher:main"
+
+[project.urls]
+Repository = "https://github.com/youssef13-del/crypto-research-agent"
+Issues = "https://github.com/youssef13-del/crypto-research-agent/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+crypto_research = [
+    "storage/migrations/*.py",
+    "storage/migrations/*.mako",
+    "storage/migrations/versions/*.py",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = [".", "src"]
+addopts = "-ra -p no:cacheprovider"
+
+[tool.ruff]
+target-version = "py314"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "ARG", "PERF", "RET", "RUF100", "C90"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 15
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["ARG001", "ARG002", "ARG005"]
+"src/crypto_research/storage/migrations/**/*.py" = ["ARG001"]
+
+[tool.mypy]
+python_version = "3.14"
+mypy_path = "src"
+strict = true
+warn_unused_configs = true
+plugins = ["pydantic.mypy"]

@@ -1,0 +1,102 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: Python 3.14 checks (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+          cache: pip
+
+      - name: Upgrade packaging tools
+        run: python -m pip install --upgrade pip setuptools
+
+      - name: Install package and development dependencies
+        run: python -m pip install -e ".[dev]"
+
+      - name: Run canonical quality checks
+        run: python scripts/check.py
+
+  distribution-smoke:
+    name: Clean wheel and sdist smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+
+      - name: Build distributions
+        run: |
+          python -m pip install --upgrade pip setuptools build
+          python -m build
+
+      - name: Inspect distribution contents
+        run: |
+          python - <<'PY'
+          import tarfile
+          import zipfile
+          from pathlib import Path
+
+          wheel = next(Path("dist").glob("*.whl"))
+          sdist = next(Path("dist").glob("*.tar.gz"))
+          required = "crypto_research/storage/migrations/script.py.mako"
+          with zipfile.ZipFile(wheel) as archive:
+              assert required in archive.namelist()
+          with tarfile.open(sdist) as archive:
+              assert any(name.endswith(required) for name in archive.getnames())
+          PY
+
+      - name: Install wheel in a fresh environment
+        run: |
+          python -m venv /tmp/chainscope-wheel
+          /tmp/chainscope-wheel/bin/python -m pip install --upgrade pip
+          /tmp/chainscope-wheel/bin/python -m pip install dist/*.whl
+
+      - name: Smoke installed package, migrations, pages, and entry points
+        run: |
+          /tmp/chainscope-wheel/bin/python - <<'PY'
+          import tempfile
+          from importlib import import_module
+          from pathlib import Path
+
+          from crypto_research.storage.repository import create_repository
+
+          for module in (
+              "crypto_research.interfaces.web.pages.home",
+              "crypto_research.interfaces.web.pages.research",
+              "crypto_research.interfaces.web.pages.dashboard",
+              "crypto_research.interfaces.web.pages.library",
+              "crypto_research.interfaces.web.pages.account",
+          ):
+              import_module(module)
+          database = Path(tempfile.mkdtemp()) / "smoke.db"
+          create_repository(f"sqlite+pysqlite:///{database.as_posix()}")
+          PY
+          /tmp/chainscope-wheel/bin/crypto-research --help
+          /tmp/chainscope-wheel/bin/chainscope --help
